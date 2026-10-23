@@ -15,7 +15,7 @@
 - 支持一次选中多个 GameObject
 - 将每个物体的 Transform 位置吸附到 Terrain 表面高度
 - 仅修改 Y 坐标，X 与 Z 保持不变
-- 可选择与地形与地形对齐，调整 Gameobject 旋转
+- 可选择 GameObject 与地形对齐，调整 GameObject 旋转
 - 场景中存在多个 Terrain 分块时，自动选择最近的一块
 - 支持 Unity Undo
 - 在 Console 中报告被吸附的 GameObject 数量
