@@ -4,6 +4,10 @@ using UnityEngine;
 
 public class GameObjectTerrainSnapper : EditorWindow
 {
+    // Align To Terrain
+    private bool alignToTerrain = false;
+
+
     // Show Window
     [MenuItem("Tools/Terrain Snapper Tools/GameObject Terrain Snapper")]
     public static void ShowWindow()
@@ -17,10 +21,7 @@ public class GameObjectTerrainSnapper : EditorWindow
         EditorGUILayout.Space();
 
         // Label
-        EditorGUILayout.LabelField(
-            "GameObject Terrain Snapper",
-            EditorStyles.boldLabel
-        );
+        EditorGUILayout.LabelField("GameObject Terrain Snapper", EditorStyles.boldLabel);
 
         EditorGUILayout.Space();
 
@@ -33,18 +34,23 @@ public class GameObjectTerrainSnapper : EditorWindow
 
         EditorGUILayout.Space();
 
+        // Align To Terrain Toggle
+        alignToTerrain = EditorGUILayout.Toggle("Align To Terrain", alignToTerrain);
+
+        EditorGUILayout.Space();
+
         // Snap Selected GameObjects
         if (GUILayout.Button(
             "Snap Selected GameObject(s) To Terrain",
             GUILayout.Height(35)))
         {
-            SnapSelectedObjects();
+            SnapSelectedObjects(alignToTerrain);
         }
     }
 
 
     // Snap Selected Objects
-    private static void SnapSelectedObjects()
+    private static void SnapSelectedObjects(bool alignToTerrain)
     {
         GameObject[] selectedObjects = Selection.gameObjects;
 
@@ -70,9 +76,7 @@ public class GameObjectTerrainSnapper : EditorWindow
                 continue;
 
             Transform target = selectedObject.transform;
-
             Vector3 worldPos = target.position;
-
             Terrain terrain = FindNearestTerrain(worldPos, terrains);
 
             if (terrain == null)
@@ -85,6 +89,13 @@ public class GameObjectTerrainSnapper : EditorWindow
             Undo.RecordObject(target, "Snap GameObject To Terrain");
 
             target.position = worldPos;
+
+            // Align Rotation To Terrain
+            if (alignToTerrain)
+            {
+                AlignRotationToTerrain(target, terrain, worldPos);
+            }
+
             objectCount++;
         }
 
@@ -93,6 +104,58 @@ public class GameObjectTerrainSnapper : EditorWindow
             $"GameObject Terrain Snapper: " +
             $"Snapped {objectCount} GameObject(s) to Terrain."
         );
+    }
+
+
+    // Align Object Rotation To Terrain Normal
+    private static void AlignRotationToTerrain(Transform target, Terrain terrain, Vector3 worldPosition)
+    {
+        TerrainData terrainData = terrain.terrainData;
+
+        Vector3 terrainPosition = terrain.transform.position;
+        Vector3 terrainSize = terrainData.size;
+
+        if (terrainSize.x <= 0f || terrainSize.z <= 0f) return;
+
+        // Convert world position to normalized Terrain coordinates
+        float normalizedX = (worldPosition.x - terrainPosition.x) / terrainSize.x;
+        float normalizedZ = (worldPosition.z - terrainPosition.z) / terrainSize.z;
+
+        normalizedX = Mathf.Clamp01(normalizedX);
+        normalizedZ = Mathf.Clamp01(normalizedZ);
+
+        // Get Terrain surface normal
+        Vector3 localNormal = terrainData.GetInterpolatedNormal(normalizedX, normalizedZ);
+
+        // Convert normal to world space
+        Vector3 worldNormal = terrain.transform.TransformDirection(localNormal).normalized;
+
+        // Preserve the object's original forward direction as much as possible
+        Vector3 originalForward = target.forward;
+
+        // Project forward direction onto the terrain surface
+        Vector3 projectedForward = Vector3.ProjectOnPlane(originalForward, worldNormal);
+
+        // Handle cases where forward is almost parallel to the normal
+        if (projectedForward.sqrMagnitude < 0.0001f)
+        {
+            projectedForward = Vector3.ProjectOnPlane(target.right, worldNormal);
+        }
+
+        // Final fallback
+        if (projectedForward.sqrMagnitude < 0.0001f)
+        {
+            projectedForward = Vector3.ProjectOnPlane(Vector3.forward,worldNormal);
+        }
+
+        projectedForward.Normalize();
+
+        // Align local Y axis to terrain normal
+        // Preserve the original heading as much as possible
+        Quaternion targetRotation = Quaternion.LookRotation(projectedForward,worldNormal);
+
+        // Apply rotation
+        target.rotation = targetRotation;
     }
 
 

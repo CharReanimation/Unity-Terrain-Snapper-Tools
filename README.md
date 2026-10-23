@@ -15,6 +15,7 @@ Batch-snap selected GameObjects to the nearest Terrain.
 - Select multiple GameObjects at once
 - Snaps each object's Transform position to the Terrain surface height
 - Only the Y position changes — X and Z are preserved
+- Align to terrain option available for adjusting gameobject's rotation
 - Automatically picks the nearest Terrain when multiple Terrain tiles exist
 - Supports Unity Undo
 - Reports the number of snapped GameObjects in the Console
